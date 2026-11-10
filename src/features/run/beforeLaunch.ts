@@ -109,6 +109,12 @@ async function runTask(
       const other = useRun.getState().configs.find((c) => c.id === target);
       if (!other) return `Configuration '${target}' no longer exists`;
       if (isCMakeBuild(other)) return buildCMake(other.id, show === true);
+      if (other.kind === "vscode-task" && other.params?.["vscode.background"] === "true") {
+        // VS Code background tasks stay active while a launch starts. Readiness
+        // problem matchers are not implemented, so startup success is only best effort.
+        const started = await startRun(other, undefined, undefined, { chain, show });
+        return started && started.status !== "failed" ? null : `'${other.name}' failed`;
+      }
       return (await runToEnd(other, chain, show)) ? null : `'${other.name}' failed`;
     }
     case "tool": {
