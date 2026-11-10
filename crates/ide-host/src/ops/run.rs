@@ -76,6 +76,24 @@ fn detected_and_saved(
             .filter(|d| !suppressed.contains(&d.id) && !saved.iter().any(|u| u.id == d.id))
             .filter(|d| linked_config(root, gradle.as_deref(), &excluded_poms, d))
             .collect();
+    // VS Code profiles are live project configurations, not a one-time import.
+    // User configurations take precedence by both id and name; malformed files
+    // are surfaced by the explicit import action without hiding other runs.
+    let env = std::env::vars().collect::<std::collections::BTreeMap<_, _>>();
+    if let Ok(vscode) = ide_run::import::import(
+        root,
+        ide_run::import::RunImportSource::Vscode,
+        &all.iter().chain(saved.iter()).cloned().collect::<Vec<_>>(),
+        &env,
+    ) {
+        for entry in vscode.imported {
+            let mut config = entry.config;
+            if !suppressed.contains(&config.id) {
+                config.detected = true;
+                all.push(config);
+            }
+        }
+    }
     all.extend(saved.iter().cloned());
     for config in all.iter_mut().filter(|c| !matches!(c.kind.as_str(), "gradle" | "maven")) {
         ide_sdk::apply::apply_to_run_configs(std::slice::from_mut(config), root, settings);

@@ -229,7 +229,11 @@ fn nextjs_recipes() {
     assert_eq!(server.args, s(&["run", "dev"]));
     assert_eq!(server.debug_adapter.as_deref(), Some("js-debug"));
 
-    assert_eq!(reason(&r, "Next.js: debug client-side"), &SkipReason::UnsupportedType { type_: "chrome".into() });
+    let browser = get(&r, "Next.js: debug client-side");
+    assert_eq!(browser.kind, "vscode-browser");
+    assert_eq!(browser.debug_adapter.as_deref(), Some("js-debug"));
+    assert_eq!(browser.extras.params["vscode.type"], "pwa-chrome");
+    assert_eq!(browser.extras.params["vscode.url"], "http://localhost:3000");
 
     let full = get(&r, "Next.js: debug full stack");
     assert_eq!((full.kind.as_str(), full.command.as_str()), ("node", "node"));
@@ -265,7 +269,8 @@ fn node_runtimes_npm_scripts_and_terminal_commands() {
     let script = get(&r, "Script");
     assert_eq!(script.args, s(&["scripts/seed.js", "--count", "10"]));
     assert_eq!(script.extras.env_files, s(&[".env"]));
-    assert_eq!(ignored(&r, "Script"), ["preLaunchTask"]);
+    assert!(ignored(&r, "Script").is_empty());
+    assert_eq!(script.extras.before_launch[0].target, "Task: tsc: build");
 
     let storybook = get(&r, "Storybook");
     assert_eq!((storybook.kind.as_str(), storybook.command.as_str()), ("shell", "pnpm"));

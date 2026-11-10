@@ -36,7 +36,7 @@ impl RunImportSource {
 
     fn is_present(self, root: &Path) -> bool {
         match self {
-            Self::Vscode => root.join(self.file()).is_file(),
+            Self::Vscode => root.join(self.file()).is_file() || root.join(".vscode/tasks.json").is_file(),
             Self::Jetbrains => !jetbrains::files(root).is_empty(),
         }
     }
@@ -127,7 +127,11 @@ pub fn import(
         return Err(IdeError::not_found(format!("{file} not found")));
     }
     let entries = match source {
-        RunImportSource::Vscode => vscode::entries(&std::fs::read_to_string(root.join(file))?, root, env)?,
+        RunImportSource::Vscode => {
+            let launch =
+                if root.join(file).is_file() { std::fs::read_to_string(root.join(file))? } else { "{}".into() };
+            vscode::entries(&launch, root, env)?
+        }
         RunImportSource::Jetbrains => jetbrains::entries(root, env)?,
     };
     Ok(finish(source, entries, existing))
@@ -193,6 +197,22 @@ pub(crate) fn finish(source: RunImportSource, entries: Vec<Entry>, existing: &[R
                 imported.push((i, ImportedRunConfig { config: found.config, ignored: found.ignored }));
             }
             Err(member) => skipped.push((i, skip(name, SkipReason::MissingMember { member }))),
+        }
+    }
+    // Resolve VS Code preLaunchTask and dependsOn labels after all IDs are assigned.
+    // Reject missing dependencies rather than accidentally launching the target without its build.
+    for (_, imported_config) in &mut imported {
+        for task in &mut imported_config.config.extras.before_launch {
+            if task.kind != "run" || !task.target.starts_with("Task: ") {
+                continue;
+            }
+            match by_name.get(&task.target).filter(|id| !id.is_empty()) {
+                Some(id) => task.target = id.clone(),
+                None => {
+                    // Retain the unresolved label: the before-launch runner reports
+                    // that the referenced configuration does not exist and aborts.
+                }
+            }
         }
     }
     imported.sort_by_key(|(i, _)| *i);
