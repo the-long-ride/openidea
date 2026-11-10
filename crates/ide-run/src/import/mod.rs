@@ -36,7 +36,7 @@ impl RunImportSource {
 
     fn is_present(self, root: &Path) -> bool {
         match self {
-            Self::Vscode => root.join(self.file()).is_file(),
+            Self::Vscode => root.join(self.file()).is_file() || root.join(".vscode/tasks.json").is_file(),
             Self::Jetbrains => !jetbrains::files(root).is_empty(),
         }
     }
@@ -127,7 +127,10 @@ pub fn import(
         return Err(IdeError::not_found(format!("{file} not found")));
     }
     let entries = match source {
-        RunImportSource::Vscode => vscode::entries(&std::fs::read_to_string(root.join(file))?, root, env)?,
+        RunImportSource::Vscode => {
+            let launch = if root.join(file).is_file() { std::fs::read_to_string(root.join(file))? } else { "{}".into() };
+            vscode::entries(&launch, root, env)?
+        },
         RunImportSource::Jetbrains => jetbrains::entries(root, env)?,
     };
     Ok(finish(source, entries, existing))
