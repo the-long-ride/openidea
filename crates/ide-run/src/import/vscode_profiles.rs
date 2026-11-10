@@ -11,7 +11,7 @@ impl Cx<'_> {
         let edge = ty.contains("edge");
         let firefox = ty == "firefox";
         let browser = if edge { "msedge" } else if firefox { "firefox" } else { "chrome" };
-        let exe = self.string(obj, "runtimeExecutable")?.unwrap_or_else(|| browser.into());
+        let exe = self.string(obj, "runtimeExecutable")?.unwrap_or_else(|| browser_executable(browser, self.env));
         let mut args = self.words(obj, "runtimeArgs")?;
         args.extend(self.words(obj, "args")?);
         let url = self.string(obj, "url")?.or(self.string(obj, "file")?);
@@ -140,4 +140,22 @@ fn vscode_executable(env: &std::collections::BTreeMap<String, String>) -> String
         }
         "code.cmd".into()
     } else { "code".into() }
+}
+
+fn browser_executable(browser: &str, env: &std::collections::BTreeMap<String, String>) -> String {
+    if cfg!(windows) {
+        let home = super::super::env_var(env, "LOCALAPPDATA", true);
+        let program_files = super::super::env_var(env, "ProgramFiles", true);
+        let program_files_x86 = super::super::env_var(env, "ProgramFiles(x86)", true);
+        let relative = match browser {
+            "msedge" => "Microsoft/Edge/Application/msedge.exe",
+            "firefox" => "Mozilla Firefox/firefox.exe",
+            _ => "Google/Chrome/Application/chrome.exe",
+        };
+        for base in [program_files, program_files_x86, home].into_iter().flatten() {
+            let candidate = Path::new(&base).join(relative);
+            if candidate.is_file() { return candidate.to_string_lossy().into_owned(); }
+        }
+    }
+    browser.into()
 }
