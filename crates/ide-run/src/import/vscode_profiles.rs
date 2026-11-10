@@ -50,7 +50,7 @@ impl Cx<'_> {
     pub(super) fn extension_launch(&self, name: &str, obj: &Map<String, Value>) -> Res<RunConfig> {
         let value = obj.get("runtimeExecutable").and_then(Value::as_str);
         let command = match value {
-            Some(v) if v == concat!("$", "{execPath}") => vscode_executable(self.env),
+            Some(concat!("$", "{execPath}")) => vscode_executable(self.env),
             None => vscode_executable(self.env),
             Some(v) => self.expand(v)?,
         };
