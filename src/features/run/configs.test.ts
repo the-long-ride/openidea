@@ -94,6 +94,23 @@ describe("config merge / override", () => {
     ]);
   });
 
+  it("groups VS Code launches across kinds but leaves ordinary runtimes and tasks separate", () => {
+    const groups = groupConfigs([
+      cfg({ id: "cargo", kind: "cargo" }),
+      cfg({ id: "tauri", kind: "cargo", folder: "VS Code launches" }),
+      cfg({ id: "extension", kind: "vscode-extension", folder: "VS Code launches" }),
+      cfg({ id: "node", kind: "node" }),
+      cfg({ id: "task", kind: "vscode-task", folder: "VS Code Tasks" }),
+      cfg({ id: "electron", kind: "node", folder: "VS Code launches" }),
+    ]);
+    expect(groups.map((g) => [g.label, g.configs.map((c) => c.id)])).toEqual([
+      ["Cargo", ["cargo"]],
+      ["VS Code launches", ["tauri", "extension", "electron"]],
+      ["Node.js", ["node"]],
+      ["Vscode-task", ["task"]],
+    ]);
+  });
+
   it("prefers an application config as the default selection", () => {
     const list = [
       cfg({ id: "cargo:build" }),

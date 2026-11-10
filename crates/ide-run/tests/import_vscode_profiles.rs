@@ -37,6 +37,10 @@ fn launch_profiles_and_task_dependencies_are_imported() {
     assert_eq!(result.imported.len(), 8);
     let find = |name: &str| result.imported.iter().find(|c| c.config.name == name).unwrap().config.clone();
     assert_eq!(find("Web").debug_adapter.as_deref(), Some("js-debug"));
+    for name in ["Web", "CLI", "Desktop", "Extension", "Go", "Full stack"] {
+        assert_eq!(find(name).extras.folder.as_deref(), Some("VS Code launches"), "{name}");
+    }
+    assert_eq!(find("Task: serve").extras.folder.as_deref(), Some("VS Code Tasks"));
     assert_eq!(find("Web").extras.params["vscode.type"], "pwa-chrome");
     assert_eq!(find("Web").extras.before_launch[0].target, find("Task: serve").id);
     assert_eq!(find("Task: serve").extras.before_launch[0].target, find("Task: build").id);

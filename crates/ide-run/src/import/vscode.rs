@@ -214,6 +214,9 @@ impl Cx<'_> {
             _ => Err(SkipReason::Invalid),
         };
         let result = result.map(|mut found| {
+            // All profiles from launch.json share one chooser section, regardless of runtime.
+            // Tasks from tasks.json retain their own folder.
+            found.config.extras.folder = Some("VS Code launches".into());
             // Values of this machine (its environment, its home) stay out of the shared run.toml.
             found.config.extras.local = self.machine_values.get();
             found
@@ -421,6 +424,7 @@ impl Cx<'_> {
                     .collect();
                 ignored.sort();
                 let mut c = config(&name, "compound", String::new(), Vec::new(), None);
+                c.extras.folder = Some("VS Code launches".into());
                 if let Some(task) = obj.get("preLaunchTask").and_then(Value::as_str) {
                     c.extras
                         .before_launch

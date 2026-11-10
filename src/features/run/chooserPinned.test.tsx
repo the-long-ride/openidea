@@ -55,6 +55,26 @@ it("lists pinned configurations first, in pin order, and not again in their grou
   expect(names(buildRows(configs, "s", null, [], ["serve"]))).toEqual(["[Pinned]", "serve", "edit"]);
 });
 
+it("shows VS Code launch configurations under one section and keeps search working", () => {
+  const extra: RunConfig[] = [
+    { ...config("Tauri Desktop", "cargo"), folder: "VS Code launches" },
+    { ...config("Extension", "vscode-extension"), folder: "VS Code launches" },
+    { ...config("Task: watch", "vscode-task"), folder: "VS Code Tasks" },
+  ];
+  expect(names(buildRows([config("Cargo build", "cargo"), ...extra], ""))).toEqual([
+    "current",
+    "[Cargo]",
+    "Cargo build",
+    "[VS Code launches]",
+    "Tauri Desktop",
+    "Extension",
+    "[Vscode-task]",
+    "Task: watch",
+    "edit",
+  ]);
+  expect(names(buildRows(extra, "Extension"))).toEqual(["[VS Code launches]", "Extension", "edit"]);
+});
+
 it("keeps pins per project across reloads", async () => {
   await loadConfigs();
   togglePinned("serve");
