@@ -229,7 +229,11 @@ fn nextjs_recipes() {
     assert_eq!(server.args, s(&["run", "dev"]));
     assert_eq!(server.debug_adapter.as_deref(), Some("js-debug"));
 
-    assert_eq!(reason(&r, "Next.js: debug client-side"), &SkipReason::UnsupportedType { type_: "chrome".into() });
+    let browser = get(&r, "Next.js: debug client-side");
+    assert_eq!(browser.kind, "vscode-browser");
+    assert_eq!(browser.debug_adapter.as_deref(), Some("js-debug"));
+    assert_eq!(browser.extras.params["vscode.type"], "pwa-chrome");
+    assert_eq!(browser.extras.params["vscode.url"], "http://localhost:3000");
 
     let full = get(&r, "Next.js: debug full stack");
     assert_eq!((full.kind.as_str(), full.command.as_str()), ("node", "node"));
