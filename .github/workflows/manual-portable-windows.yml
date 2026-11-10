@@ -1,0 +1,76 @@
+name: Portable Windows EXE (checkout main)
+
+on:
+  # Workflows that exist only on a non-default branch cannot be manually
+  # dispatched through the Actions UI. Push an empty commit to this branch
+  # when another build is needed; the job always checks out latest main.
+  push:
+    branches:
+      - ci/manual-windows-portable
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openidea-portable-main
+  cancel-in-progress: false
+
+jobs:
+  portable:
+    name: Windows x64 — portable OpenIDEA.exe
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout app from main (not this workflow branch)
+        uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+      - name: Record app revision
+        shell: pwsh
+        run: |
+          $sha = (git rev-parse HEAD).Trim()
+          "Building main at ``$sha``" >> $env:GITHUB_STEP_SUMMARY
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 11
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Set up Rust MSVC
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: portable-main-x64
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build release executable, without an installer
+        run: pnpm exec tauri build --no-bundle --target x86_64-pc-windows-msvc
+      - name: Collect single executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $source = 'target/x86_64-pc-windows-msvc/release/openidea.exe'
+          if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "Missing build output: $source"
+          }
+          New-Item -ItemType Directory -Force -Path 'portable' | Out-Null
+          Copy-Item -LiteralPath $source -Destination 'portable/OpenIDEA.exe'
+          $sha256 = (Get-FileHash -LiteralPath 'portable/OpenIDEA.exe' -Algorithm SHA256).Hash
+          "OpenIDEA.exe SHA-256: ``$sha256``" >> $env:GITHUB_STEP_SUMMARY
+          "Windows x64 portable application; Microsoft Edge WebView2 Runtime must be installed on the system." >> $env:GITHUB_STEP_SUMMARY
+      - name: Upload one EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenIDEA-Windows-x64-portable
+          path: portable/OpenIDEA.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
