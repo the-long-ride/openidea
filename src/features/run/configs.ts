@@ -183,12 +183,20 @@ export interface ConfigGroup {
   configs: RunConfig[];
 }
 
-/** Groups by kind, keeping the backend's order (detection order) within and across groups. */
+/**
+ * Group detected VS Code launch profiles together even when their runtimes differ.
+ * Other configurations keep their existing kind groups and detection order.
+ */
 export function groupConfigs(configs: readonly RunConfig[]): ConfigGroup[] {
   const groups = new Map<string, ConfigGroup>();
   for (const c of configs) {
-    let g = groups.get(c.kind);
-    if (!g) groups.set(c.kind, (g = { kind: c.kind, label: kindLabel(c.kind), configs: [] }));
+    const vscodeLaunch = c.folder === "VS Code launches";
+    const key = vscodeLaunch ? "vscode:launches" : c.kind;
+    let g = groups.get(key);
+    if (!g) {
+      g = { kind: key, label: vscodeLaunch ? "VS Code launches" : kindLabel(c.kind), configs: [] };
+      groups.set(key, g);
+    }
     g.configs.push(c);
   }
   return [...groups.values()];

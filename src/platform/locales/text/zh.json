@@ -3304,6 +3304,7 @@
   "No run configurations added.": "未添加运行配置。",
   "Add new…": "新增…",
   "Edit configuration templates…": "编辑配置模板…",
+  "VS Code launches": "VS Code 启动配置",
   "Import from .vscode/launch.json": "从 .vscode/launch.json 导入",
   "Import Run Configurations from .vscode/launch.json": "从 .vscode/launch.json 导入运行配置",
   "Cannot import run configurations": "无法导入运行配置",
