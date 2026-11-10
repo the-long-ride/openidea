@@ -1,0 +1,78 @@
+name: Build standalone portable Windows EXE
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Branch or tag to build
+        required: true
+        type: string
+        default: feat/vscode-launch-tasks-portable
+  push:
+    branches:
+      - feat/vscode-launch-tasks-portable
+    paths:
+      - .github/workflows/manual-portable-windows.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openidea-portable-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  portable:
+    name: Build one Windows x64 EXE
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout selected code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref || github.ref_name }}
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 11
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Rust MSVC toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: standalone-windows-x64
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build release EXE (no installer)
+        run: pnpm exec tauri build --no-bundle --target x86_64-pc-windows-msvc
+      - name: Prepare single portable executable
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $source = 'target/x86_64-pc-windows-msvc/release/openidea.exe'
+          if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "Tauri did not produce $source"
+          }
+          New-Item -ItemType Directory -Path 'portable' -Force | Out-Null
+          Copy-Item -LiteralPath $source -Destination 'portable/OpenIDEA.exe'
+          $hash = (Get-FileHash -LiteralPath 'portable/OpenIDEA.exe' -Algorithm SHA256).Hash
+          $bytes = (Get-Item -LiteralPath 'portable/OpenIDEA.exe').Length
+          "### Standalone OpenIDEA.exe" >> $env:GITHUB_STEP_SUMMARY
+          "- Size: $bytes bytes" >> $env:GITHUB_STEP_SUMMARY
+          "- SHA-256: ``$hash``" >> $env:GITHUB_STEP_SUMMARY
+          "- Windows x64, no installer. Requires the system Microsoft Edge WebView2 Runtime." >> $env:GITHUB_STEP_SUMMARY
+      - name: Upload ONE portable EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenIDEA-Windows-x64-portable
+          path: portable/OpenIDEA.exe
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 30
