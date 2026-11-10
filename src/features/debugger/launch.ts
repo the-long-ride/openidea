@@ -174,6 +174,20 @@ function jsDebugLaunch(rc: RunConfig, cwd: string): LaunchConfig {
     skipFiles: workflowSettings().debugger.skipLibraryCode ? ["<node_internals>/**", "**/node_modules/**"] : [],
     autoAttachChildProcesses: true,
   };
+  if (rc.kind === "vscode-browser") {
+    const type = rc.params?.["vscode.type"] ?? "pwa-chrome";
+    const url = rc.params?.["vscode.url"];
+    const webRoot = rc.params?.["vscode.webRoot"];
+    extra.type = type;
+    if (url) extra.url = url;
+    if (webRoot) extra.webRoot = join(cwd, webRoot);
+    if (rc.command !== (type === "pwa-msedge" ? "msedge" : "chrome")) {
+      extra.runtimeExecutable = resolveCommand(rc.command, cwd);
+    }
+    extra.runtimeArgs = rc.args.filter((arg) => arg !== url);
+    out.extraJson = JSON.stringify(extra);
+    return out;
+  }
   const name = commandName(rc.command);
   const deno = name === "deno" ? denoRuntime(rc) : null;
   if (deno) {
