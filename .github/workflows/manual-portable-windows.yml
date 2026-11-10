@@ -1,0 +1,71 @@
+name: Manual Windows portable EXE
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: manual-portable-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  portable:
+    name: Windows x64 portable
+    runs-on: windows-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+      - name: Install pnpm
+        uses: pnpm/action-setup@v5
+        with:
+          version: 11
+      - name: Install Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: manual-portable-x64
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Test VS Code configuration import
+        run: cargo test --locked -p ide-run --test import_vscode
+      - name: Typecheck
+        run: pnpm typecheck
+      - name: Build portable desktop application
+        run: pnpm exec tauri build --no-bundle --target x86_64-pc-windows-msvc
+      - name: Package portable EXE
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = 'portable'
+          New-Item -ItemType Directory -Force -Path $out | Out-Null
+          $exe = 'target/x86_64-pc-windows-msvc/release/openidea.exe'
+          if (-not (Test-Path $exe)) { throw "Missing expected executable: $exe" }
+          Copy-Item $exe "$out/OpenIDEA.exe"
+          $loader = 'target/x86_64-pc-windows-msvc/release/WebView2Loader.dll'
+          if (Test-Path $loader) { Copy-Item $loader $out }
+          $hash = (Get-FileHash "$out/OpenIDEA.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
+          "$hash  OpenIDEA.exe" | Set-Content -Path "$out/SHA256SUMS.txt" -Encoding ascii
+          @"
+          OpenIDEA portable (Windows x64)
+          Run OpenIDEA.exe directly without installing the application.
+          Requires Microsoft Edge WebView2 Runtime to be available on Windows.
+          User preferences still use OpenIDEA's standard data directories.
+          "@ | Set-Content -Path "$out/README.txt"
+      - name: Upload portable artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: OpenIDEA-Windows-x64-portable-${{ github.run_number }}
+          path: portable/*
+          if-no-files-found: error
+          retention-days: 30
