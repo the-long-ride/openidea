@@ -39,6 +39,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Test VS Code configuration import
         run: cargo test --locked -p ide-run --test import_vscode
+      - name: Test imported browser, CLI, desktop, extension and tasks profiles
+        run: cargo test --locked -p ide-run --test import_vscode_profiles
       - name: Typecheck
         run: pnpm typecheck
       - name: Build portable desktop application
