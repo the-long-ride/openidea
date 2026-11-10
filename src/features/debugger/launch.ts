@@ -442,7 +442,7 @@ export function launchConfigFor(rc: RunConfig, root: string, php: string | null 
   if (adapter === "delve") return delveLaunch(rc, cwd, root);
   if (adapter === "godot") return godotLaunch(rc, cwd);
   if (adapter === "php-debug") return phpDebugLaunch(rc, cwd, php);
-  if (adapter === "netcoredbg" && rc.kind === "dotnet") {
+  if (adapter === "netcoredbg" && (rc.kind === "dotnet" || rc.kind === "vscode-dotnet")) {
     if (!rc.params?.targetPath) return null;
     return {
       ...base(rc, adapter, cwd),
