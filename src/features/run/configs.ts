@@ -193,7 +193,10 @@ export function groupConfigs(configs: readonly RunConfig[]): ConfigGroup[] {
     const vscodeLaunch = c.folder === "VS Code launches";
     const key = vscodeLaunch ? "vscode:launches" : c.kind;
     let g = groups.get(key);
-    if (!g) groups.set(key, (g = { kind: key, label: vscodeLaunch ? "VS Code launches" : kindLabel(c.kind), configs: [] }));
+    if (!g) {
+      g = { kind: key, label: vscodeLaunch ? "VS Code launches" : kindLabel(c.kind), configs: [] };
+      groups.set(key, g);
+    }
     g.configs.push(c);
   }
   return [...groups.values()];
