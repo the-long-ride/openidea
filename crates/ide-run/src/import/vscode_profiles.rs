@@ -53,8 +53,8 @@ impl Cx<'_> {
         let program = self.path_from(program, &dir);
         let args = self.words(obj, "args")?;
         let mut c = if program.ends_with(".dll") {
-            config(name, "dotnet", "dotnet".into(), std::iter::once(program.clone()).chain(args).collect(), Some("netcoredbg"))
-        } else { config(name, "dotnet", program.clone(), args, Some("netcoredbg")) };
+            config(name, "vscode-dotnet", "dotnet".into(), std::iter::once(program.clone()).chain(args).collect(), Some("netcoredbg"))
+        } else { config(name, "vscode-dotnet", program.clone(), args, Some("netcoredbg")) };
         c.extras.params.insert("targetPath".into(), program);
         Ok(c)
     }
