@@ -84,6 +84,33 @@ describe("run config → launch config", () => {
     });
   });
 
+  it("CodeLLDB imports an exact Cargo command and its executable filter", () => {
+    const l = launchConfigFor(
+      rc({
+        kind: "cargo",
+        command: "cargo",
+        args: ["run", "--package", "cli", "--bin", "cli", "--", "--help"],
+        debugAdapter: "codelldb",
+        params: {
+          "vscode.cargo": JSON.stringify({
+            args: ["build", "--package", "cli", "--bin", "cli"],
+            filter: { name: "cli", kind: "bin" },
+          }),
+          "vscode.stopOnEntry": "true",
+        },
+      }),
+      "/repo",
+    )!;
+    expect(l).toMatchObject({ program: null, args: ["--help"], cwd: "/repo" });
+    expect(extra(l)).toMatchObject({
+      cargo: {
+        args: ["build", "--package", "cli", "--bin", "cli"],
+        filter: { name: "cli", kind: "bin" },
+      },
+      stopOnEntry: true,
+    });
+  });
+
   it("cargo test builds test binaries without running", () => {
     const l = launchConfigFor(
       rc({ kind: "cargo", command: "cargo", args: ["test", "--workspace"], debugAdapter: "codelldb" }),

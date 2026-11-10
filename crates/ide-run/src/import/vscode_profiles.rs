@@ -71,6 +71,28 @@ impl Cx<'_> {
     }
 
     pub(super) fn native_launch(&self, name: &str, obj: &Map<String, Value>) -> Res<RunConfig> {
+        // CodeLLDB's cargo integration uses Cargo's JSON build artifacts to select
+        // the executable. Its launch profiles often have no program field.
+        if let Some(cargo) = obj.get("cargo").and_then(Value::as_object) {
+            let raw = self.words(cargo, "args")?;
+            let Some(subcommand) = raw.first().map(String::as_str) else {
+                return Err(SkipReason::NothingToRun);
+            };
+            let mut args = raw.clone();
+            match subcommand {
+                "build" | "check" => args[0] = "run".into(),
+                "test" | "bench" => args.retain(|arg| arg != "--no-run"),
+                _ => return Err(SkipReason::UnsupportedType { type_: format!("cargo {subcommand}") }),
+            }
+            let program_args = self.words(obj, "args")?;
+            if !program_args.is_empty() {
+                args.push("--".into());
+                args.extend(program_args);
+            }
+            let mut c = config(name, "cargo", "cargo".into(), args, Some("codelldb"));
+            c.extras.params.insert("vscode.cargo".into(), Value::Object(cargo.clone()).to_string());
+            return Ok(c);
+        }
         let (dir, _) = self.cwd(obj)?;
         let program = self.string(obj, "program")?.ok_or(SkipReason::NothingToRun)?;
         Ok(config(name, "program", self.path_from(program, &dir), self.words(obj, "args")?, Some("codelldb")))

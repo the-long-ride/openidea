@@ -27,3 +27,7 @@ Run **Actions → Manual Windows portable EXE → Run workflow** on a branch con
 ### Debugger prerequisites
 
 Executable launch does not imply debugger support: the relevant DAP adapter must be installed and compatible with the target program. Launch and Debug use the same OpenIDEA chooser, but breakpoints, attaching and stepping require the actual adapter.
+
+### Rust / CodeLLDB Cargo profiles
+
+Rust launch profiles with `type: "lldb"` or `type: "codelldb"` and a CodeLLDB `cargo` block are imported as Cargo run configurations. Cargo `build` / `test --no-run` / `--example` targets and the `cargo.filter` selection are preserved for DAP launch, and `stopOnEntry` is passed to CodeLLDB. Run uses Cargo's native CLI; Debug uses the CodeLLDB adapter and Cargo build artifacts. `preLaunchTask` is still executed before debugging. Install CodeLLDB in OpenIDEA before using Rust breakpoints.

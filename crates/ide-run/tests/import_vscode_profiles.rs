@@ -61,3 +61,34 @@ fn standalone_tasks_json_is_importable() {
     assert_eq!(result.imported.len(), 1);
     assert_eq!(result.imported[0].config.name, "Task: build");
 }
+
+#[test]
+fn codelldb_cargo_profiles_build_bins_tests_and_examples() {
+    let dir = tempfile::tempdir().unwrap();
+    let vscode = dir.path().join(".vscode");
+    fs::create_dir_all(&vscode).unwrap();
+    fs::write(vscode.join("launch.json"), r#"{
+      "configurations": [
+        {"name":"Rust binary", "type":"lldb", "request":"launch",
+          "cargo":{"args":["build","--package","cli","--bin","cli"],"filter":{"name":"cli","kind":"bin"}},
+          "args":["--help"], "stopOnEntry":true},
+        {"name":"Rust tests", "type":"lldb", "request":"launch",
+          "cargo":{"args":["test","--no-run","--lib"],"filter":{"kind":"lib"}}},
+        {"name":"Rust example", "type":"codelldb", "request":"launch",
+          "cargo":{"args":["build","--example","hello"],"filter":{"name":"hello","kind":"example"}}}
+      ]
+    }"#).unwrap();
+    let result = import(dir.path(), RunImportSource::Vscode, &[], &BTreeMap::new()).unwrap();
+    assert!(result.skipped.is_empty(), "{:#?}", result.skipped);
+    assert_eq!(result.imported.len(), 3);
+    let find = |name: &str| result.imported.iter().find(|c| c.config.name == name).unwrap().config.clone();
+    let binary = find("Rust binary");
+    assert_eq!(binary.kind, "cargo");
+    assert_eq!(binary.args, ["run", "--package", "cli", "--bin", "cli", "--", "--help"]);
+    assert_eq!(binary.debug_adapter.as_deref(), Some("codelldb"));
+    assert_eq!(binary.extras.params["vscode.stopOnEntry"], "true");
+    let cargo: serde_json::Value = serde_json::from_str(&binary.extras.params["vscode.cargo"]).unwrap();
+    assert_eq!(cargo["filter"]["name"], "cli");
+    assert_eq!(find("Rust tests").args, ["test", "--lib"]);
+    assert_eq!(find("Rust example").args, ["run", "--example", "hello"]);
+}

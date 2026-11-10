@@ -52,10 +52,31 @@ function cargoLaunch(rc: RunConfig, cwd: string, adapter: string): LaunchConfig 
     if (example >= 0 && rest[example + 1]) filter = { name: rest[example + 1], kind: "example" };
     if (!filter) filter = { kind: "bin" };
   }
+  let cargo: { args: string[]; filter?: { name?: string; kind?: string } } = filter ? { args, filter } : { args };
+  const imported = rc.params?.["vscode.cargo"];
+  if (imported) {
+    try {
+      const raw = JSON.parse(imported) as { args?: unknown; filter?: unknown };
+      if (Array.isArray(raw.args) && raw.args.every((value) => typeof value === "string")) {
+        const selected = raw.filter;
+        const originalFilter =
+          selected && typeof selected === "object" && !Array.isArray(selected)
+            ? (selected as { name?: string; kind?: string })
+            : undefined;
+        cargo = originalFilter ? { args: raw.args, filter: originalFilter } : { args: raw.args };
+      }
+    } catch {
+      // An edited invalid Cargo setting still uses the normal Cargo detection.
+    }
+  }
   return {
     ...base(rc, adapter, cwd),
     args: programArgs,
-    extraJson: JSON.stringify({ cargo: filter ? { args, filter } : { args }, sourceLanguages: ["rust"] }),
+    extraJson: JSON.stringify({
+      cargo,
+      sourceLanguages: ["rust"],
+      ...(rc.params?.["vscode.stopOnEntry"] === "true" ? { stopOnEntry: true } : {}),
+    }),
   };
 }
 
