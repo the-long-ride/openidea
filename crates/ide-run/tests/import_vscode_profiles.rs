@@ -67,7 +67,9 @@ fn codelldb_cargo_profiles_build_bins_tests_and_examples() {
     let dir = tempfile::tempdir().unwrap();
     let vscode = dir.path().join(".vscode");
     fs::create_dir_all(&vscode).unwrap();
-    fs::write(vscode.join("launch.json"), r#"{
+    fs::write(
+        vscode.join("launch.json"),
+        r#"{
       "configurations": [
         {"name":"Rust binary", "type":"lldb", "request":"launch",
           "cargo":{"args":["build","--package","cli","--bin","cli"],"filter":{"name":"cli","kind":"bin"}},
@@ -77,7 +79,9 @@ fn codelldb_cargo_profiles_build_bins_tests_and_examples() {
         {"name":"Rust example", "type":"codelldb", "request":"launch",
           "cargo":{"args":["build","--example","hello"],"filter":{"name":"hello","kind":"example"}}}
       ]
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
     let result = import(dir.path(), RunImportSource::Vscode, &[], &BTreeMap::new()).unwrap();
     assert!(result.skipped.is_empty(), "{:#?}", result.skipped);
     assert_eq!(result.imported.len(), 3);
