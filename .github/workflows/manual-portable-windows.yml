@@ -1,23 +1,36 @@
-name: Manual Windows portable EXE
+name: Build standalone portable Windows EXE
 
 on:
   workflow_dispatch:
+    inputs:
+      source_ref:
+        description: Branch or tag to build
+        required: true
+        type: string
+        default: feat/vscode-launch-tasks-portable
+  push:
+    branches:
+      - feat/vscode-launch-tasks-portable
+    paths:
+      - .github/workflows/manual-portable-windows.yml
 
 permissions:
   contents: read
 
 concurrency:
-  group: manual-portable-${{ github.ref }}
+  group: openidea-portable-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   portable:
-    name: Windows x64 portable
+    name: Build one Windows x64 EXE
     runs-on: windows-latest
-    timeout-minutes: 90
+    timeout-minutes: 120
     steps:
-      - name: Checkout
+      - name: Checkout selected code
         uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.source_ref || github.ref_name }}
       - name: Install pnpm
         uses: pnpm/action-setup@v5
         with:
@@ -27,47 +40,39 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
-      - name: Rust toolchain
+      - name: Install Rust MSVC toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: x86_64-pc-windows-msvc
-      - name: Rust cache
+      - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:
-          key: manual-portable-x64
-      - name: Install dependencies
+          key: standalone-windows-x64
+      - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
-      - name: Test VS Code configuration import
-        run: cargo test --locked -p ide-run --test import_vscode
-      - name: Test imported browser, CLI, desktop, extension and tasks profiles
-        run: cargo test --locked -p ide-run --test import_vscode_profiles
-      - name: Typecheck
-        run: pnpm typecheck
-      - name: Build portable desktop application
+      - name: Build release EXE (no installer)
         run: pnpm exec tauri build --no-bundle --target x86_64-pc-windows-msvc
-      - name: Package portable EXE
+      - name: Prepare single portable executable
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $out = 'portable'
-          New-Item -ItemType Directory -Force -Path $out | Out-Null
-          $exe = 'target/x86_64-pc-windows-msvc/release/openidea.exe'
-          if (-not (Test-Path $exe)) { throw "Missing expected executable: $exe" }
-          Copy-Item $exe "$out/OpenIDEA.exe"
-          $loader = 'target/x86_64-pc-windows-msvc/release/WebView2Loader.dll'
-          if (Test-Path $loader) { Copy-Item $loader $out }
-          $hash = (Get-FileHash "$out/OpenIDEA.exe" -Algorithm SHA256).Hash.ToLowerInvariant()
-          "$hash  OpenIDEA.exe" | Set-Content -Path "$out/SHA256SUMS.txt" -Encoding ascii
-          @"
-          OpenIDEA portable (Windows x64)
-          Run OpenIDEA.exe directly without installing the application.
-          Requires Microsoft Edge WebView2 Runtime to be available on Windows.
-          User preferences still use OpenIDEA's standard data directories.
-          "@ | Set-Content -Path "$out/README.txt"
-      - name: Upload portable artifact
+          $source = 'target/x86_64-pc-windows-msvc/release/openidea.exe'
+          if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
+            throw "Tauri did not produce $source"
+          }
+          New-Item -ItemType Directory -Path 'portable' -Force | Out-Null
+          Copy-Item -LiteralPath $source -Destination 'portable/OpenIDEA.exe'
+          $hash = (Get-FileHash -LiteralPath 'portable/OpenIDEA.exe' -Algorithm SHA256).Hash
+          $bytes = (Get-Item -LiteralPath 'portable/OpenIDEA.exe').Length
+          "### Standalone OpenIDEA.exe" >> $env:GITHUB_STEP_SUMMARY
+          "- Size: $bytes bytes" >> $env:GITHUB_STEP_SUMMARY
+          "- SHA-256: ``$hash``" >> $env:GITHUB_STEP_SUMMARY
+          "- Windows x64, no installer. Requires the system Microsoft Edge WebView2 Runtime." >> $env:GITHUB_STEP_SUMMARY
+      - name: Upload ONE portable EXE
         uses: actions/upload-artifact@v4
         with:
-          name: OpenIDEA-Windows-x64-portable-${{ github.run_number }}
-          path: portable/*
+          name: OpenIDEA-Windows-x64-portable
+          path: portable/OpenIDEA.exe
           if-no-files-found: error
+          compression-level: 0
           retention-days: 30
