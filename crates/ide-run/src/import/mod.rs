@@ -195,6 +195,20 @@ pub(crate) fn finish(source: RunImportSource, entries: Vec<Entry>, existing: &[R
             Err(member) => skipped.push((i, skip(name, SkipReason::MissingMember { member }))),
         }
     }
+    // Resolve VS Code preLaunchTask and dependsOn labels after all IDs are assigned.
+    // Reject missing dependencies rather than accidentally launching the target without its build.
+    for (_, imported_config) in &mut imported {
+        for task in &mut imported_config.config.extras.before_launch {
+            if task.kind != "run" || !task.target.starts_with("Task: ") { continue; }
+            match by_name.get(&task.target).filter(|id| !id.is_empty()) {
+                Some(id) => task.target = id.clone(),
+                None => {
+                    // Retain the unresolved label: the before-launch runner reports
+                    // that the referenced configuration does not exist and aborts.
+                }
+            }
+        }
+    }
     imported.sort_by_key(|(i, _)| *i);
     skipped.sort_by_key(|(i, _)| *i);
     RunImport {
