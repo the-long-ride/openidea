@@ -992,7 +992,10 @@ mod tests {
         let put = |product: &str, file: &str, seconds| {
             let path = root.join(product).join(file);
             write(&path, b"<application/>");
-            std::fs::File::open(path)
+            // Windows requires write access to update a file's modification time.
+            std::fs::OpenOptions::new()
+                .write(true)
+                .open(&path)
                 .unwrap()
                 .set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(seconds))
                 .unwrap();

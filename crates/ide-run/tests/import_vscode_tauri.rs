@@ -48,10 +48,7 @@ fn tauri_dev_launch_preserves_cargo_build_and_before_launch_task() {
     assert_eq!(debug.kind, "cargo");
     assert_eq!(debug.command, "cargo");
     assert_eq!(debug.debug_adapter.as_deref(), Some("codelldb"));
-    assert_eq!(
-        debug.args,
-        ["run", "--manifest-path=./src-tauri/Cargo.toml", "--no-default-features"]
-    );
+    assert_eq!(debug.args, ["run", "--manifest-path=./src-tauri/Cargo.toml", "--no-default-features"]);
     let cargo: serde_json::Value = serde_json::from_str(&debug.extras.params["vscode.cargo"]).unwrap();
     assert_eq!(
         cargo["args"],

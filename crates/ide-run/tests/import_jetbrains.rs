@@ -90,8 +90,10 @@ fn jar_applications_from_every_configuration_location() {
         assert_eq!(jar.kind, "jar-application");
         let java = if cfg!(windows) { "java.exe" } else { "java" };
         assert_eq!(jar.command, format!("{root}/jdk/bin/{java}"));
+        // Paths expanded from an IntelliJ project may use native Windows separators.
+        let normalized_args: Vec<String> = jar.args.iter().map(|arg| arg.replace('\\', "/")).collect();
         assert_eq!(
-            jar.args,
+            normalized_args,
             s(&[
                 "-Xmx1g",
                 "-Dname=My Server",
