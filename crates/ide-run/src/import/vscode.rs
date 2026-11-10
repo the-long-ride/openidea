@@ -51,7 +51,8 @@ const NODE_TERMINAL: &[&str] = &["command"];
 const COMPOUND: &[&str] = &["configurations", "preLaunchTask"];
 const BROWSER: &[&str] = &["url", "webRoot", "runtimeExecutable", "runtimeArgs", "args", "file"];
 const NATIVE: &[&str] = &["program", "args", "MIMode", "miDebuggerPath", "externalConsole"];
-const EXTENSION: &[&str] = &["runtimeExecutable", "runtimeArgs", "args", "extensionDevelopmentPath", "extensionTestsPath", "outFiles"];
+const EXTENSION: &[&str] =
+    &["runtimeExecutable", "runtimeArgs", "args", "extensionDevelopmentPath", "extensionTestsPath", "outFiles"];
 const DOTNET: &[&str] = &["program", "args", "justMyCode", "stopAtEntry"];
 const GO: &[&str] = &["program", "args", "mode", "buildFlags"];
 
@@ -229,8 +230,12 @@ impl Cx<'_> {
             ("node" | "pwa-node", "launch") => (self.node_launch(name, obj)?, NODE_LAUNCH),
             ("node" | "pwa-node", "attach") => (self.node_attach(name, obj)?, NODE_ATTACH),
             ("node-terminal", "launch") => (self.node_terminal(name, obj)?, NODE_TERMINAL),
-            ("chrome" | "pwa-chrome" | "msedge" | "pwa-msedge" | "edge" | "firefox", "launch") => (self.browser_launch(name, ty, obj)?, BROWSER),
-            ("extensionHost" | "extension-host" | "vscode-extension", "launch") => (self.extension_launch(name, obj)?, EXTENSION),
+            ("chrome" | "pwa-chrome" | "msedge" | "pwa-msedge" | "edge" | "firefox", "launch") => {
+                (self.browser_launch(name, ty, obj)?, BROWSER)
+            }
+            ("extensionHost" | "extension-host" | "vscode-extension", "launch") => {
+                (self.extension_launch(name, obj)?, EXTENSION)
+            }
             ("cppdbg" | "cppvsdbg" | "lldb" | "codelldb", "launch") => (self.native_launch(name, obj)?, NATIVE),
             ("coreclr" | "clr" | "dotnet" | "netcoredbg", "launch") => (self.dotnet_launch(name, obj)?, DOTNET),
             ("go" | "delve", "launch") => (self.go_launch(name, obj)?, GO),
@@ -243,7 +248,10 @@ impl Cx<'_> {
             config.cwd = self.cwd(obj)?.1.map(Into::into);
             self.environment(obj, &mut config)?;
             if let Some(task) = self.string(obj, "preLaunchTask")? {
-                config.extras.before_launch.push(BeforeLaunchTask { kind: "run".into(), target: profiles::task_name(&task) });
+                config
+                    .extras
+                    .before_launch
+                    .push(BeforeLaunchTask { kind: "run".into(), target: profiles::task_name(&task) });
             }
             if obj.get("stopOnEntry").or_else(|| obj.get("stopAtEntry")).and_then(Value::as_bool) == Some(true) {
                 config.extras.params.insert("vscode.stopOnEntry".into(), "true".into());
@@ -414,7 +422,9 @@ impl Cx<'_> {
                 ignored.sort();
                 let mut c = config(&name, "compound", String::new(), Vec::new(), None);
                 if let Some(task) = obj.get("preLaunchTask").and_then(Value::as_str) {
-                    c.extras.before_launch.push(BeforeLaunchTask { kind: "run".into(), target: profiles::task_name(task) });
+                    c.extras
+                        .before_launch
+                        .push(BeforeLaunchTask { kind: "run".into(), target: profiles::task_name(task) });
                 }
                 Ok(Found { config: c, members, ignored })
             }

@@ -81,8 +81,10 @@ fn detected_and_saved(
     // are surfaced by the explicit import action without hiding other runs.
     let env = std::env::vars().collect::<std::collections::BTreeMap<_, _>>();
     if let Ok(vscode) = ide_run::import::import(
-        root, ide_run::import::RunImportSource::Vscode,
-        &all.iter().chain(saved.iter()).cloned().collect::<Vec<_>>(), &env
+        root,
+        ide_run::import::RunImportSource::Vscode,
+        &all.iter().chain(saved.iter()).cloned().collect::<Vec<_>>(),
+        &env,
     ) {
         for entry in vscode.imported {
             let mut config = entry.config;

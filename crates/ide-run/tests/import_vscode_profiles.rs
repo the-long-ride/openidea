@@ -7,7 +7,9 @@ fn launch_profiles_and_task_dependencies_are_imported() {
     let dir = tempfile::tempdir().unwrap();
     let vscode = dir.path().join(".vscode");
     fs::create_dir_all(&vscode).unwrap();
-    fs::write(vscode.join("launch.json"), r#"{
+    fs::write(
+        vscode.join("launch.json"),
+        r#"{
       "version": "0.2.0",
       "configurations": [
         {"name":"Web", "type":"pwa-chrome","request":"launch","url":"http://localhost:3000","preLaunchTask":"serve"},
@@ -17,13 +19,19 @@ fn launch_profiles_and_task_dependencies_are_imported() {
         {"name":"Go", "type":"go","request":"launch","program":"."}
       ],
       "compounds": [{"name":"Full stack","configurations":["Web","CLI"],"preLaunchTask":"build"}]
-    }"#).unwrap();
-    fs::write(vscode.join("tasks.json"), r#"{
+    }"#,
+    )
+    .unwrap();
+    fs::write(
+        vscode.join("tasks.json"),
+        r#"{
       "version":"2.0.0", "tasks":[
         {"label":"build","type":"process","command":"cargo","args":["build"]},
         {"label":"serve","type":"npm","script":"dev","dependsOn":"build"}
       ]
-    }"#).unwrap();
+    }"#,
+    )
+    .unwrap();
     let result = import(dir.path(), RunImportSource::Vscode, &[], &BTreeMap::new()).unwrap();
     assert!(result.skipped.is_empty(), "{:#?}", result.skipped);
     assert_eq!(result.imported.len(), 8);
@@ -44,7 +52,11 @@ fn launch_profiles_and_task_dependencies_are_imported() {
 fn standalone_tasks_json_is_importable() {
     let dir = tempfile::tempdir().unwrap();
     fs::create_dir_all(dir.path().join(".vscode")).unwrap();
-    fs::write(dir.path().join(".vscode/tasks.json"), r#"{"tasks":[{"label":"build","type":"process","command":"cargo","args":["check"]}]}"#).unwrap();
+    fs::write(
+        dir.path().join(".vscode/tasks.json"),
+        r#"{"tasks":[{"label":"build","type":"process","command":"cargo","args":["check"]}]}"#,
+    )
+    .unwrap();
     let result = import(dir.path(), RunImportSource::Vscode, &[], &BTreeMap::new()).unwrap();
     assert_eq!(result.imported.len(), 1);
     assert_eq!(result.imported[0].config.name, "Task: build");

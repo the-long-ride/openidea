@@ -4,15 +4,15 @@ OpenIDEA discovers supported configurations in project-root `.vscode/launch.json
 
 ### Supported launch profiles
 
-| VS Code type | Run | Debug |
-| --- | --- | --- |
-| `node`, `pwa-node`, `node-terminal`, `debugpy`, `python` | Yes | Existing Node/Python DAP adapters |
-| `pwa-chrome`, `chrome`, `pwa-msedge`, `msedge`, `edge` | Yes | `js-debug` browser adapter (must be installed) |
-| `firefox` | Yes | Not wired to a Firefox DAP adapter |
-| `cppdbg`, `cppvsdbg`, `lldb`, `codelldb` | Yes | CodeLLDB (adapter required; `cppvsdbg` semantics may differ) |
-| `coreclr`, `clr`, `dotnet`, `netcoredbg` | Yes | netcoredbg adapter required |
-| `go`, `delve` | Yes | Delve adapter required |
-| `extensionHost`, `extension-host`, `vscode-extension` | Yes (starts VS Code/VSCodium) | Requires VS Code's own Extension Host debugger; not implemented |
+| VS Code type                                             | Run                           | Debug                                                           |
+| -------------------------------------------------------- | ----------------------------- | --------------------------------------------------------------- |
+| `node`, `pwa-node`, `node-terminal`, `debugpy`, `python` | Yes                           | Existing Node/Python DAP adapters                               |
+| `pwa-chrome`, `chrome`, `pwa-msedge`, `msedge`, `edge`   | Yes                           | `js-debug` browser adapter (must be installed)                  |
+| `firefox`                                                | Yes                           | Not wired to a Firefox DAP adapter                              |
+| `cppdbg`, `cppvsdbg`, `lldb`, `codelldb`                 | Yes                           | CodeLLDB (adapter required; `cppvsdbg` semantics may differ)    |
+| `coreclr`, `clr`, `dotnet`, `netcoredbg`                 | Yes                           | netcoredbg adapter required                                     |
+| `go`, `delve`                                            | Yes                           | Delve adapter required                                          |
+| `extensionHost`, `extension-host`, `vscode-extension`    | Yes (starts VS Code/VSCodium) | Requires VS Code's own Extension Host debugger; not implemented |
 
 The converter handles `cwd`, `env`, `envFile`, arguments, and `preLaunchTask`, and it resolves `workspaceFolder` and other supported static VS Code variables. Dynamic variables such as `input` and `command` can be unsupported; skipped configurations are reported by **Import Run Configurations from .vscode/launch.json**.
 

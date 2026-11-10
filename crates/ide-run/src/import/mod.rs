@@ -128,9 +128,10 @@ pub fn import(
     }
     let entries = match source {
         RunImportSource::Vscode => {
-            let launch = if root.join(file).is_file() { std::fs::read_to_string(root.join(file))? } else { "{}".into() };
+            let launch =
+                if root.join(file).is_file() { std::fs::read_to_string(root.join(file))? } else { "{}".into() };
             vscode::entries(&launch, root, env)?
-        },
+        }
         RunImportSource::Jetbrains => jetbrains::entries(root, env)?,
     };
     Ok(finish(source, entries, existing))
@@ -202,7 +203,9 @@ pub(crate) fn finish(source: RunImportSource, entries: Vec<Entry>, existing: &[R
     // Reject missing dependencies rather than accidentally launching the target without its build.
     for (_, imported_config) in &mut imported {
         for task in &mut imported_config.config.extras.before_launch {
-            if task.kind != "run" || !task.target.starts_with("Task: ") { continue; }
+            if task.kind != "run" || !task.target.starts_with("Task: ") {
+                continue;
+            }
             match by_name.get(&task.target).filter(|id| !id.is_empty()) {
                 Some(id) => task.target = id.clone(),
                 None => {
