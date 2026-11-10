@@ -265,7 +265,8 @@ fn node_runtimes_npm_scripts_and_terminal_commands() {
     let script = get(&r, "Script");
     assert_eq!(script.args, s(&["scripts/seed.js", "--count", "10"]));
     assert_eq!(script.extras.env_files, s(&[".env"]));
-    assert_eq!(ignored(&r, "Script"), ["preLaunchTask"]);
+    assert!(ignored(&r, "Script").is_empty());
+    assert_eq!(script.extras.before_launch[0].target, "Task: tsc: build");
 
     let storybook = get(&r, "Storybook");
     assert_eq!((storybook.kind.as_str(), storybook.command.as_str()), ("shell", "pnpm"));
