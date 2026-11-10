@@ -1,0 +1,42 @@
+name: Format VS Code feature branch (temporary)
+
+on:
+  push:
+    branches:
+      - feat/vscode-launch-tasks-portable
+    paths:
+      - .github/workflows/feature-format.yml
+permissions:
+  contents: write
+jobs:
+  format:
+    if: github.repository == 'the-long-ride/openidea'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: true
+      - uses: pnpm/action-setup@v5
+        with:
+          version: 11
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - run: pnpm install --frozen-lockfile
+      - name: Format only touched documents and Rust workspace
+        run: |
+          cargo fmt --all
+          pnpm exec oxfmt README.md docs/vscode-launch-tasks.md
+      - name: Commit formatted code
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -u
+          if ! git diff --staged --quiet; then
+            git commit -m "style: apply project Rust and Markdown formatters"
+            git push origin HEAD:feat/vscode-launch-tasks-portable
+          fi
