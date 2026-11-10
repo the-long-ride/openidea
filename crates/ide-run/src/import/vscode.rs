@@ -10,7 +10,9 @@ use super::{
     Entry, Found, SkipReason, command_name, config, env_var, normalize, path_from, project_python, split_args,
     working_dir,
 };
-use crate::RunConfig;
+use crate::{BeforeLaunchTask, RunConfig};
+#[path = "vscode_profiles.rs"]
+mod profiles;
 use ide_core::{IdeError, IdeResult};
 use serde_json::{Map, Value};
 use std::cell::Cell;
@@ -40,13 +42,18 @@ const SILENT: &[&str] = &[
     "linux",
 ];
 
-const COMMON: &[&str] = &["cwd", "env", "envFile"];
+const COMMON: &[&str] = &["cwd", "env", "envFile", "preLaunchTask", "stopOnEntry", "stopAtEntry"];
 const PYTHON_LAUNCH: &[&str] = &["program", "module", "args", "python", "pythonArgs"];
 const PYTHON_ATTACH: &[&str] = &["connect", "host", "port", "pathMappings"];
 const NODE_LAUNCH: &[&str] = &["program", "args", "runtimeExecutable", "runtimeArgs"];
 const NODE_ATTACH: &[&str] = &["address", "port", "localRoot", "remoteRoot"];
 const NODE_TERMINAL: &[&str] = &["command"];
-const COMPOUND: &[&str] = &["configurations"];
+const COMPOUND: &[&str] = &["configurations", "preLaunchTask"];
+const BROWSER: &[&str] = &["url", "webRoot", "runtimeExecutable", "runtimeArgs", "args", "file"];
+const NATIVE: &[&str] = &["program", "args", "MIMode", "miDebuggerPath", "externalConsole"];
+const EXTENSION: &[&str] = &["runtimeExecutable", "runtimeArgs", "args", "extensionDevelopmentPath", "extensionTestsPath", "outFiles"];
+const DOTNET: &[&str] = &["program", "args", "justMyCode", "stopAtEntry"];
+const GO: &[&str] = &["program", "args", "mode", "buildFlags"];
 
 const PACKAGE_MANAGERS: &[&str] = &["npm", "pnpm", "yarn", "bun"];
 /// `npm <command>` lines the npm configuration type edits (`src/features/run/types.ts`).
@@ -73,6 +80,7 @@ pub(crate) fn entries(text: &str, root: &Path, env: &BTreeMap<String, String>) -
     let list = |key: &str| json.get(key).and_then(Value::as_array).cloned().unwrap_or_default();
     let mut out: Vec<Entry> = list("configurations").iter().map(|v| cx.entry(v)).collect();
     out.extend(list("compounds").iter().map(|v| cx.compound(v)));
+    out.extend(cx.task_entries());
     Ok(out)
 }
 
@@ -221,6 +229,11 @@ impl Cx<'_> {
             ("node" | "pwa-node", "launch") => (self.node_launch(name, obj)?, NODE_LAUNCH),
             ("node" | "pwa-node", "attach") => (self.node_attach(name, obj)?, NODE_ATTACH),
             ("node-terminal", "launch") => (self.node_terminal(name, obj)?, NODE_TERMINAL),
+            ("chrome" | "pwa-chrome" | "msedge" | "pwa-msedge" | "edge" | "firefox", "launch") => (self.browser_launch(name, ty, obj)?, BROWSER),
+            ("extensionHost" | "extension-host" | "vscode-extension", "launch") => (self.extension_launch(name, obj)?, EXTENSION),
+            ("cppdbg" | "cppvsdbg" | "lldb" | "codelldb", "launch") => (self.native_launch(name, obj)?, NATIVE),
+            ("coreclr" | "clr" | "dotnet" | "netcoredbg", "launch") => (self.dotnet_launch(name, obj)?, DOTNET),
+            ("go" | "delve", "launch") => (self.go_launch(name, obj)?, GO),
             ("debugpy" | "python" | "node" | "pwa-node" | "node-terminal", other) => {
                 return Err(SkipReason::UnsupportedRequest { request: other.to_owned() });
             }
@@ -229,6 +242,15 @@ impl Cx<'_> {
         if request == "launch" {
             config.cwd = self.cwd(obj)?.1.map(Into::into);
             self.environment(obj, &mut config)?;
+            if let Some(task) = self.string(obj, "preLaunchTask")? {
+                config.extras.before_launch.push(BeforeLaunchTask { kind: "run".into(), target: profiles::task_name(&task) });
+            }
+            if obj.get("stopOnEntry").or_else(|| obj.get("stopAtEntry")).and_then(Value::as_bool) == Some(true) {
+                config.extras.params.insert("vscode.stopOnEntry".into(), "true".into());
+            }
+            if obj.get("console").and_then(Value::as_str) == Some("integratedTerminal") {
+                config.extras.emulate_terminal = true;
+            }
         }
         let mut ignored: Vec<String> = obj
             .keys()
@@ -390,7 +412,11 @@ impl Cx<'_> {
                     .cloned()
                     .collect();
                 ignored.sort();
-                Ok(Found { config: config(&name, "compound", String::new(), Vec::new(), None), members, ignored })
+                let mut c = config(&name, "compound", String::new(), Vec::new(), None);
+                if let Some(task) = obj.get("preLaunchTask").and_then(Value::as_str) {
+                    c.extras.before_launch.push(BeforeLaunchTask { kind: "run".into(), target: profiles::task_name(task) });
+                }
+                Ok(Found { config: c, members, ignored })
             }
             _ => Err(SkipReason::Invalid),
         };
